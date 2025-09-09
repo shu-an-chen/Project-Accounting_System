@@ -1,1 +1,1 @@
-# Project-Accounting_System
+為連接資料庫的 JavaFX 記帳軟體專案/製作其中支出紀錄與圖表的 UI 介面
