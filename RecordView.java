@@ -93,35 +93,69 @@ public class RecordView {
         layout.setRight(rightPanel);
 
         return layout;
-    }
+    }  
+        private void updatePieChartWithSummary(PieChart chart, List<Record> records) {
+    try {
+        Map<String, Double> categoryTotals = new HashMap<>();
+        for (Record r : records) {
+            categoryTotals.put(r.category, categoryTotals.getOrDefault(r.category, 0.0) + r.amount);
+        }
 
-    private void updatePieChartWithSummary(PieChart chart, List<Record> records) {
-        try {
-            Map<String, Double> categoryTotals = new HashMap<>();
-            for (Record r : records) {
-                categoryTotals.put(r.category, categoryTotals.getOrDefault(r.category, 0.0) + r.amount);
-            }
+        chart.getData().clear();
+        double total = categoryTotals.values().stream().mapToDouble(Double::doubleValue).sum();
+        if (total == 0) return;
 
-            chart.getData().clear();
-            double total = categoryTotals.values().stream().mapToDouble(Double::doubleValue).sum();
-            if (total == 0) total = 1; 
-
-            for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
-                double percentage = (entry.getValue() / total) * 100;
-                chart.getData().add(new PieChart.Data(entry.getKey() + " " + String.format("%.1f%%", percentage), entry.getValue()));                
-            }
-
-            summaryBox.getChildren().clear();
-            summaryBox.getChildren().add(new Label("各類別總額：" + total));
-            for (String category : Arrays.asList("吃的", "日常確幸", "服飾", "欠款", "通勤", "其他")) {
-                double sum = categoryTotals.getOrDefault(category, 0.0);
-                summaryBox.getChildren().add(new Label(category + ": " + sum + " 元"));
-            }
+        for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
+            double percentage = (entry.getValue() / total) * 100;
+            PieChart.Data slice = new PieChart.Data(
+                String.format("%s (%.1f%%)", entry.getKey(), percentage), 
+                entry.getValue()
+            );
+            chart.getData().add(slice);
+            addInteractivity(slice);
+        }
+        
+            applyCustomColors(chart);
+            updateSummaryPanel(categoryTotals, total);
 
         } catch (Exception e) {
-            chart.setTitle("資料錯誤：更新失敗但仍保留之前的資料");
+            chart.setTitle("圖表更新異常");
+            e.printStackTrace();
         }
     }
-    
-    
+        
+        private void applyCustomColors(PieChart chart) {
+        int i = 0;
+        String[] colors = {"#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F"};
+        for (PieChart.Data data : chart.getData()) {
+            String color = colors[i % colors.length];
+                data.getNode().setStyle("-fx-pie-color: " + color + "; -fx-border-color: white; -fx-border-width: 1;");
+                    i++;
+                }
+            }
+            
+        private void addInteractivity(PieChart.Data data) {
+        data.getNode().setOnMouseEntered(e -> {
+        data.getNode().setScaleX(1.05);
+        data.getNode().setScaleY(1.05);
+        data.getNode().setCursor(Cursor.HAND);
+                });
+                data.getNode().setOnMouseExited(e -> {
+                    data.getNode().setScaleX(1.0);
+                    data.getNode().setScaleY(1.0);
+                });
+            }
+        private void updateSummaryPanel(Map<String, Double> totals, double totalAmount) {
+                summaryBox.getChildren().clear();
+                Label title = new Label(" 財務摘要 (總計: " + totalAmount + " 元)");
+                title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                summaryBox.getChildren().add(title);
+            
+                List<String> categories = Arrays.asList("吃的", "日常確幸", "服飾", "欠款", "通勤", "其他");
+                for (String cat : categories) {
+                    double amount = totals.getOrDefault(cat, 0.0);
+                    Label label = new Label(String.format("• %s: %.0f 元", cat, amount));
+                    summaryBox.getChildren().add(label);
+                }
+        }
 }
